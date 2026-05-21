@@ -1,0 +1,32 @@
+[
+  {
+    "id": "factual_01",
+    "type": "factual",
+    "question": "What is the speed of light in a vacuum?",
+    "expected_keywords": ["299,792,458", "meters per second", "m/s", "c", "electromagnetic"]
+  },
+  {
+    "id": "multi_hop_01",
+    "type": "multi_hop",
+    "question": "Who founded the company that created the programming language Python, and what other major project is that person known for?",
+    "expected_keywords": ["guido", "van rossum", "python", "bdfl", "google", "dropbox"]
+  },
+  {
+    "id": "comparison_01",
+    "type": "comparison",
+    "question": "What are the main differences between nuclear fission and nuclear fusion as energy sources?",
+    "expected_keywords": ["fission", "fusion", "uranium", "hydrogen", "plasma", "radioactive", "waste", "energy"]
+  },
+  {
+    "id": "insufficient_evidence_01",
+    "type": "insufficient_evidence",
+    "question": "What will the exact global average temperature be on January 1st, 2075?",
+    "expected_keywords": ["cannot", "uncertain", "prediction", "model", "estimate", "insufficient", "scenarios"]
+  },
+  {
+    "id": "conflicting_sources_01",
+    "type": "conflicting_sources",
+    "question": "Is coffee consumption beneficial or harmful to human health?",
+    "expected_keywords": ["conflict", "studies", "beneficial", "harmful", "risk", "benefit", "cardiovascular", "antioxidants", "depends"]
+  }
+]
