@@ -37,48 +37,39 @@ Deep research goes beyond keyword retrieval. It means:
 
 ### Data flow
 
-```
-User question
-      │
-      ▼
-┌─────────────────────────────────────────────────────┐
-│  Stage 1 — PLANNING                                  │
-│  Groq LLaMA 3.3 70B decomposes the question into    │
-│  4 targeted search queries                           │
-└───────────────────────┬─────────────────────────────┘
-                        │ 4 search queries
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│  Stage 2 — SEARCHING  (parallel, ThreadPoolExecutor)│
-│  Tavily API runs all 4 queries concurrently         │
-│  → deduplicated URL list ranked by Tavily score     │
-└───────────────────────┬─────────────────────────────┘
-                        │ up to 20 candidate URLs
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│  Stage 3 — FETCHING   (parallel, up to 8 workers)   │
-│  trafilatura extracts clean article text            │
-│  → requests/BeautifulSoup fallback on failure       │
-└───────────────────────┬─────────────────────────────┘
-                        │ fetched page texts
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│  Stage 4 — SELECTING                                 │
-│  Pages are split into ~350-word chunks              │
-│  Each chunk scored: 75% keyword overlap + 25% trust │
-│  Top chunks selected within 15,000-char budget      │
-└───────────────────────┬─────────────────────────────┘
-                        │ ranked context chunks + sources
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│  Stage 5 — ANSWERING  (streaming)                   │
-│  Groq LLaMA 3.3 70B writes a cited markdown answer  │
-│  Tokens streamed to UI in real time                 │
-└───────────────────────┬─────────────────────────────┘
-                        │
-                        ▼
-           Confidence score + Follow-up questions
-           Session stored to disk (JSON)
+```mermaid
+flowchart TD
+    Q([User Question]) --> P
+
+    subgraph P [" Stage 1 · Planning "]
+        P1["Groq LLaMA 3.3 70B\nDecomposes question into 5 targeted search queries"]
+    end
+
+    P --> S
+
+    subgraph S [" Stage 2 · Searching "]
+        S1["Tavily runs all queries in parallel\nDeduplicates and ranks results by relevance score"]
+    end
+
+    S --> F
+
+    subgraph F [" Stage 3 · Fetching "]
+        F1["Parallel fetch with 20s timeout\ntrafilatura extracts article text · requests fallback"]
+    end
+
+    F --> SEL
+
+    subgraph SEL [" Stage 4 · Selecting "]
+        SEL1["Split pages into ~350-word chunks\nScore = 75% keyword relevance + 25% source trust\nFit best chunks within 15,000-char context budget"]
+    end
+
+    SEL --> A
+
+    subgraph A [" Stage 5 · Answering "]
+        A1["Groq streams a cited markdown answer\nDuplicate citations removed in post-processing"]
+    end
+
+    A --> OUT([Confidence score · Follow-up questions · Session saved])
 ```
 
 ### Risks and limitations
@@ -89,9 +80,9 @@ User question
 
 3. **Latency spikes** — page fetching is the main latency driver. A single slow or blocked host can hold up one worker. Occasional Tavily or Groq rate-limit responses can extend end-to-end time to 30s+.
 
-4. **Citation regex fragility** — the eval harness (and confidence meter) count citations using an em-dash regex. If the model uses a pipe `|` separator instead of `—`, citations are under-counted. This explains the zero-citation count for `conflicting_sources_01` in the eval run despite the answer containing inline citations.
+4. **Multilingual retrieval gap** — language detection is heuristic (Unicode range checks). Tavily searches are always issued in English regardless of input language; translated web results may lose nuance.
 
-5. **Multilingual retrieval** — language detection is heuristic (Unicode range checks). Tavily searches are always issued in English regardless of the input language; translated web results may lose nuance.
+5. **No PDF or paywalled content** — academic PDFs and journal articles behind paywalls cannot be fetched; only open-web sources are used.
 
 ### Two future improvements
 
@@ -266,12 +257,6 @@ On typical questions (factual, comparison, multi-hop), the agent produces well-c
 3. **PDF and arXiv ingestion** — use `pdfplumber` or the arXiv API to retrieve and chunk full-text academic papers.
 4. **Persistent vector store** — cache embeddings of fetched pages in a local Chroma/FAISS index so repeat queries on the same topic skip re-fetching.
 5. **Multilingual search** — detect the input language and issue queries in that language as well as English for better native-language coverage.
-
----
-
-## Video demo
-
-*[Video demo link — to be added]*
 
 ---
 
