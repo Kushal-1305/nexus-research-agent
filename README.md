@@ -137,29 +137,42 @@ Results are written to `eval/results.json`.
 
 ## Project structure
 
-```
-deep_research_agent/
-├── main.py                  # Streamlit UI
-├── agent/
-│   ├── loop.py              # 5-stage generator pipeline
-│   ├── planner.py           # Query decomposition (Groq)
-│   ├── searcher.py          # Parallel Tavily search
-│   ├── fetcher.py           # Parallel page fetching (trafilatura)
-│   ├── selector.py          # Chunk ranking (keyword + trust)
-│   ├── answerer.py          # Streaming answer generation (Groq)
-│   ├── confidence.py        # Confidence score computation
-│   ├── followup.py          # Follow-up question generation
-│   └── trust.py             # Domain trust scoring
-├── session/
-│   └── manager.py           # JSON-backed session persistence
-├── utils/
-│   ├── language.py          # Unicode-based language detection
-│   └── tokens.py            # Token estimation + text truncation
-└── eval/
-    ├── dataset.json          # 5-question evaluation dataset
-    ├── harness.py            # Evaluation runner
-    └── results.json          # Last eval run output
-```
+**`agent/`** — the research pipeline, one file per stage
+
+| File | What it does |
+|---|---|
+| `loop.py` | Orchestrates all 5 stages as a generator; yields progress events to the UI |
+| `planner.py` | Asks Groq to decompose the question into 5 search queries |
+| `searcher.py` | Runs all queries against Tavily in parallel; deduplicates and filters blocked domains |
+| `fetcher.py` | Fetches up to 8 pages concurrently with a 20s timeout; trafilatura + requests fallback |
+| `selector.py` | Splits pages into ~350-word chunks, scores each by keyword relevance + source trust |
+| `answerer.py` | Calls Groq to generate a streamed, cited answer; deduplicates citations in post-processing |
+| `confidence.py` | Scores the answer 0–100 across citation density, source diversity, relevance, completeness |
+| `followup.py` | Generates 3 follow-up questions based on the Q&A |
+| `trust.py` | Domain trust scores; blocks social media; flags Reddit/LinkedIn-only results |
+
+**`session/`** — conversation persistence
+
+| File | What it does |
+|---|---|
+| `manager.py` | Stores each session as a JSON file; handles turns, summary, title, archive, delete |
+
+**`utils/`** — shared helpers
+
+| File | What it does |
+|---|---|
+| `language.py` | Detects input language from Unicode ranges (Hindi, Tamil, Telugu, Bengali, and more) |
+| `tokens.py` | Rough token estimation and character-budget truncation |
+
+**`eval/`** — automated evaluation
+
+| File | What it does |
+|---|---|
+| `dataset.json` | 5 questions covering factual, multi-hop, comparison, insufficient-evidence, conflicting-sources |
+| `harness.py` | Runs the full pipeline on each question; reports citations, keyword coverage, latency, uncertainty |
+| `results.json` | Output from the last harness run |
+
+**`main.py`** — Streamlit UI with streaming output, session sidebar, confidence meter, follow-up buttons, and source trust badges.
 
 ---
 
