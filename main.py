@@ -135,20 +135,27 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] summary {
 
 /* ── Chat input ── */
 [data-testid="stChatInput"] textarea {
-    background: #161b22 !important;
-    border: 1px solid #30363d !important;
-    color: #e6edf3 !important;
-    border-radius: 10px !important;
+    background: #1c2128 !important;
+    border: 1px solid #373e47 !important;
+    color: #cdd9e5 !important;
+    caret-color: #cdd9e5 !important;
+    border-radius: 12px !important;
     font-size: 0.9rem !important;
+    line-height: 1.6 !important;
+    padding: 12px 16px !important;
+}
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #545d68 !important;
 }
 [data-testid="stChatInput"] textarea:focus {
-    border-color: #1f6feb !important;
-    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15) !important;
+    border-color: #4d80c8 !important;
+    box-shadow: 0 0 0 3px rgba(77, 128, 200, 0.12) !important;
+    outline: none !important;
 }
 [data-testid="stChatInputContainer"] {
-    background: #0d1117 !important;
-    border-top: 1px solid #21262d !important;
-    padding: 0.75rem 0 !important;
+    background: #161b22 !important;
+    border-top: 1px solid #2d333b !important;
+    padding: 0.85rem 0 !important;
 }
 
 /* ── Status widget (hidden, replaced by custom HTML) ── */
