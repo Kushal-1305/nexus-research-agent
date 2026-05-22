@@ -103,8 +103,8 @@ flowchart TD
 ### Installation
 
 ```bash
-git clone <repo-url>
-cd deep_research_agent
+git clone https://github.com/Kushal-1305/nexus-research-agent.git
+cd nexus-research-agent
 pip install -r requirements.txt
 ```
 
@@ -184,7 +184,7 @@ Results are written to `eval/results.json`.
 
 **Answer (excerpt):** The speed of light in a vacuum is defined to be exactly **299,792,458 m/s** by the SI definition of the metre. [Is The Speed of Light Constant? — desy.de](https://www.desy.de/...) This value is supported by measurements over the last century to parts-per-billion precision. [Speed of Light — livescience.com](https://www.livescience.com/...)
 
-*7 citations · 5 sources · 9.2s*
+*9 citations · 9.2s*
 
 ---
 
@@ -194,7 +194,7 @@ Results are written to `eval/results.json`.
 
 **Answer (excerpt):** Guido van Rossum created Python while working at the Centrum Wiskunde & Informatica (CWI) — he did not found a company for it. [Guido van Rossum — wikipedia.org](https://en.wikipedia.org/wiki/Guido_van_Rossum) Beyond Python, he is known for the ABC language, the Grail web browser, and the Mondrian code review system. [Guido van Rossum — interestingengineering.com](https://interestingengineering.com/...)
 
-*8 citations · 5 sources · 16.0s*
+*5 citations · 6.9s*
 
 ---
 
