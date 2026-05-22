@@ -259,16 +259,16 @@ The dataset has two tiers: five single-turn questions covering distinct difficul
 
 **Multi-turn results** (context continuity):
 
-| Conversation | T1 Question | T2 Question | Continuity | Result |
-|---|---|---|---|---|
-| `multi_turn_01` | James Webb Telescope overview | Discoveries it has made | ≥ 50% carry-over keywords | PASS |
-| `multi_turn_02` | OpenAI and its products | How it compares to competitors | ≥ 50% carry-over keywords | PASS |
+| Conversation | T1 Question | T2 Question | Metric |
+|---|---|---|---|
+| `multi_turn_01` | James Webb Telescope overview | "What discoveries has *it* made?" | Context continuity ≥ 50% |
+| `multi_turn_02` | OpenAI and its products | "How does *it* compare to competitors?" | Context continuity ≥ 50% |
 
-T2 questions use pronouns ("it") that only resolve correctly if the agent reads session history. Both conversations passed, confirming that prior-turn context is injected into the planning and answering stages via the session summary.
+T2 questions deliberately use pronouns ("it") that only resolve correctly if the agent reads session history from T1. The harness measures what fraction of T1 carry-over keywords appear in T2's answer — PASS if ≥ 50%. Run `python -m eval.harness` to execute and record results.
 
 ### Key takeaway
 
-Across all five single-turn question types the agent meets every target: **8.2 citations**, **76% keyword coverage**, **377-word answers**, **100% uncertainty detection**, and **9.5s median latency**. Both multi-turn conversations passed context continuity, confirming session history is carried forward correctly. The conflicting-sources question produced the strongest individual result (14 citations, 586 words), showing the agent retrieves broad evidence when sources genuinely disagree rather than converging prematurely on one side.
+Across all five single-turn question types the agent meets every target: **8.2 citations**, **76% keyword coverage**, **377-word answers**, **100% uncertainty detection**, and **9.5s median latency**. The conflicting-sources question produced the strongest individual result (14 citations, 586 words), showing the agent retrieves broad evidence when sources genuinely disagree rather than converging prematurely on one side.
 
 ---
 
