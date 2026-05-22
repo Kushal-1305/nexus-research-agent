@@ -1,7 +1,32 @@
 # agent/planner.py
 
-from groq import Groq
 import os
+import time
+from groq import Groq
+
+
+def _groq_with_retry(client: Groq, *, model: str, messages: list, max_tokens: int,
+                     temperature: float = 0.0, retries: int = 4) -> str:
+    delay = 15
+    for attempt in range(retries):
+        try:
+            resp = client.chat.completions.create(
+                model=model, messages=messages,
+                max_tokens=max_tokens, temperature=temperature,
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            if attempt == retries - 1:
+                raise
+            s = str(e).lower()
+            is_tpm = ("rate_limit" in s or "429" in s) and "per day" not in s and "tokens per day" not in s
+            if is_tpm:
+                print(f"[planner] Per-minute rate limit, retrying in {delay}s…", flush=True)
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
+
 
 def generate_search_queries(user_question: str, conversation_summary: str = "") -> list[str]:
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
@@ -22,12 +47,12 @@ User question: {user_question}
 
 Search queries:"""
 
-    response = client.chat.completions.create(
+    raw = _groq_with_retry(
+        client,
         model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=256,
-        messages=[{"role": "user", "content": prompt}]
     )
-    raw = response.choices[0].message.content.strip()
 
     queries = []
     for line in raw.splitlines():

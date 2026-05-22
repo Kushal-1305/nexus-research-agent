@@ -2,9 +2,11 @@
 """
 Evaluation harness. Run with:
     cd deep_research_agent
-    python -m eval.harness
+    python -m eval.harness            # full run
+    python -m eval.harness --start 4  # resume from question 4 (1-indexed)
 """
 
+import argparse
 import json
 import re
 import os
@@ -68,14 +70,29 @@ def _run_question(question: str) -> tuple[str, list[dict], list[str]]:
     return "".join(answer_parts), sources, queries
 
 
-def run_eval() -> None:
+def _load_existing_results() -> dict[str, dict]:
+    """Load previously saved per-question results keyed by question id."""
+    if not os.path.exists(RESULTS_PATH):
+        return {}
+    try:
+        with open(RESULTS_PATH) as f:
+            saved = json.load(f)
+        return {r["id"]: r for r in saved.get("results", [])}
+    except Exception:
+        return {}
+
+
+def run_eval(start_from: int = 1) -> None:
     with open(DATASET_PATH) as f:
         dataset = json.load(f)
 
+    # Load any previously completed results so we can merge them
+    existing = _load_existing_results()
     results = []
+
     print(f"\n{'='*60}")
     print(f"Deep Research Agent — Evaluation Harness")
-    print(f"Dataset: {len(dataset)} questions")
+    print(f"Dataset: {len(dataset)} questions  |  Starting from: {start_from}")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*60}\n")
 
@@ -84,6 +101,15 @@ def run_eval() -> None:
         qtype    = item["type"]
         question = item["question"]
         exp_kws  = item.get("expected_keywords", [])
+
+        # Reuse existing result if we're skipping this question
+        if i < start_from:
+            if qid in existing:
+                results.append(existing[qid])
+                print(f"[{i}/{len(dataset)}] {qid} — skipped (using saved result)")
+            else:
+                print(f"[{i}/{len(dataset)}] {qid} — skipped (no saved result, will be missing from summary)")
+            continue
 
         print(f"[{i}/{len(dataset)}] {qid} ({qtype})")
         print(f"  Q: {question}")
@@ -120,6 +146,9 @@ def run_eval() -> None:
         }
         results.append(result)
 
+        # Save incrementally after each question so a crash/limit loses minimal work
+        _save_results(results)
+
         print(f"  Citations: {citation_count} | KW coverage: {kw_coverage:.0%} "
               f"| Words: {answer_len_words} | Time: {elapsed}s")
         if uncertainty_score is not None:
@@ -127,47 +156,59 @@ def run_eval() -> None:
             print(f"  Uncertainty check: {status}")
         print()
 
-        time.sleep(1)
+        if i < len(dataset):
+            time.sleep(5)
 
+    summary = _save_results(results)
     print(f"{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
+    print(f"  Avg citations per answer : {summary['avg_citation_count']:.1f}")
+    print(f"  Avg keyword coverage     : {summary['avg_keyword_coverage']:.0%}")
+    print(f"  Avg answer length (words): {summary['avg_answer_length_words']:.0f}")
+    print(f"  Avg time per question    : {summary['avg_elapsed_seconds']:.1f}s")
+    if summary["uncertainty_pass_rate"] is not None:
+        unc_results = [r for r in results if r["metrics"]["uncertainty_score"] is not None]
+        print(f"  Uncertainty detection    : {summary['uncertainty_pass_rate']:.0%} ({len(unc_results)} questions)")
+    print()
+    print(f"Results saved to: {RESULTS_PATH}")
 
+
+def _save_results(results: list[dict]) -> dict:
+    if not results:
+        return
     avg_citations   = sum(r["metrics"]["citation_count"]      for r in results) / len(results)
     avg_kw_coverage = sum(r["metrics"]["keyword_coverage"]    for r in results) / len(results)
     avg_words       = sum(r["metrics"]["answer_length_words"] for r in results) / len(results)
     avg_time        = sum(r["metrics"]["elapsed_seconds"]     for r in results) / len(results)
-
-    unc_results = [r for r in results if r["metrics"]["uncertainty_score"] is not None]
-    unc_pass_rate = (
+    unc_results     = [r for r in results if r["metrics"]["uncertainty_score"] is not None]
+    unc_pass_rate   = (
         sum(1 for r in unc_results if r["metrics"]["uncertainty_score"] == 1.0) / len(unc_results)
         if unc_results else None
     )
-
-    print(f"  Avg citations per answer : {avg_citations:.1f}")
-    print(f"  Avg keyword coverage     : {avg_kw_coverage:.0%}")
-    print(f"  Avg answer length (words): {avg_words:.0f}")
-    print(f"  Avg time per question    : {avg_time:.1f}s")
-    if unc_pass_rate is not None:
-        print(f"  Uncertainty detection    : {unc_pass_rate:.0%} ({len(unc_results)} questions)")
-    print()
-
+    summary = {
+        "total_questions":          len(results),
+        "avg_citation_count":       round(avg_citations, 2),
+        "avg_keyword_coverage":     round(avg_kw_coverage, 4),
+        "avg_answer_length_words":  round(avg_words),
+        "avg_elapsed_seconds":      round(avg_time, 2),
+        "uncertainty_pass_rate":    round(unc_pass_rate, 4) if unc_pass_rate is not None else None,
+    }
     output = {
         "timestamp": datetime.now().isoformat(),
-        "summary": {
-            "total_questions":          len(results),
-            "avg_citation_count":       round(avg_citations, 2),
-            "avg_keyword_coverage":     round(avg_kw_coverage, 4),
-            "avg_answer_length_words":  round(avg_words),
-            "avg_elapsed_seconds":      round(avg_time, 2),
-            "uncertainty_pass_rate":    round(unc_pass_rate, 4) if unc_pass_rate is not None else None,
-        },
-        "results": results,
+        "summary":   summary,
+        "results":   results,
     }
     with open(RESULTS_PATH, "w") as f:
         json.dump(output, f, indent=2)
-    print(f"Results saved to: {RESULTS_PATH}")
+    return summary
 
 
 if __name__ == "__main__":
-    run_eval()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--start", type=int, default=1, metavar="N",
+        help="Start from question N (1-indexed). Questions before N reuse saved results.",
+    )
+    args = parser.parse_args()
+    run_eval(start_from=args.start)

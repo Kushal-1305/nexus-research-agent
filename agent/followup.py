@@ -1,6 +1,30 @@
 # agent/followup.py
 import os
+import time
 from groq import Groq
+
+
+def _groq_with_retry(client: Groq, *, model: str, messages: list, max_tokens: int,
+                     temperature: float = 0.0, retries: int = 4) -> str:
+    delay = 15
+    for attempt in range(retries):
+        try:
+            resp = client.chat.completions.create(
+                model=model, messages=messages,
+                max_tokens=max_tokens, temperature=temperature,
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            if attempt == retries - 1:
+                raise
+            s = str(e).lower()
+            is_tpm = ("rate_limit" in s or "429" in s) and "per day" not in s and "tokens per day" not in s
+            if is_tpm:
+                print(f"[followup] Per-minute rate limit, retrying in {delay}s…", flush=True)
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
 
 
 def suggest_followups(question: str, answer: str, language: str = "English") -> list[str]:
@@ -23,13 +47,13 @@ Rules:
 - Output ONLY a numbered list (1. 2. 3.), no explanations or preamble
 {lang_note}"""
 
-    response = client.chat.completions.create(
+    raw = _groq_with_retry(
+        client,
         model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=200,
         temperature=0.7,
-        messages=[{"role": "user", "content": prompt}],
     )
-    raw = response.choices[0].message.content.strip()
 
     questions = []
     for line in raw.splitlines():

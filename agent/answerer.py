@@ -2,8 +2,20 @@
 
 import os
 import re
+import time
 from typing import Generator
 from groq import Groq
+
+
+def _is_rate_limit(exc: Exception) -> bool:
+    s = str(exc).lower()
+    return "rate_limit" in s or "429" in s or "rate limit" in s
+
+
+def _is_per_minute_limit(exc: Exception) -> bool:
+    """True for TPM (per-minute) limits which resolve quickly. False for TPD (per-day)."""
+    s = str(exc).lower()
+    return _is_rate_limit(exc) and "per day" not in s and "tokens per day" not in s
 
 MODEL = "llama-3.3-70b-versatile"
 MAX_ANSWER_TOKENS = 1024
@@ -94,25 +106,44 @@ def generate_answer(
 
     if stream:
         def _token_stream() -> Generator[str, None, None]:
-            response = client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                max_tokens=MAX_ANSWER_TOKENS,
-                temperature=0.2,
-                stream=True,
-            )
-            for chunk in response:
-                delta = chunk.choices[0].delta
-                if delta and delta.content:
-                    yield delta.content
+            delay = 15
+            for attempt in range(4):
+                try:
+                    response = client.chat.completions.create(
+                        model=MODEL,
+                        messages=messages,
+                        max_tokens=MAX_ANSWER_TOKENS,
+                        temperature=0.2,
+                        stream=True,
+                    )
+                    for chunk in response:
+                        delta = chunk.choices[0].delta
+                        if delta and delta.content:
+                            yield delta.content
+                    return
+                except Exception as e:
+                    if attempt == 3 or not _is_per_minute_limit(e):
+                        raise
+                    print(f"[answerer] Per-minute rate limit, retrying in {delay}s…", flush=True)
+                    time.sleep(delay)
+                    delay *= 2
         return _token_stream()
     else:
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            max_tokens=MAX_ANSWER_TOKENS,
-            temperature=0.2,
-            stream=False,
-        )
-        raw = response.choices[0].message.content or ""
-        return _deduplicate_citations(raw)
+        delay = 15
+        for attempt in range(4):
+            try:
+                response = client.chat.completions.create(
+                    model=MODEL,
+                    messages=messages,
+                    max_tokens=MAX_ANSWER_TOKENS,
+                    temperature=0.2,
+                    stream=False,
+                )
+                raw = response.choices[0].message.content or ""
+                return _deduplicate_citations(raw)
+            except Exception as e:
+                if attempt == 3 or not _is_per_minute_limit(e):
+                    raise
+                print(f"[answerer] Per-minute rate limit, retrying in {delay}s…", flush=True)
+                time.sleep(delay)
+                delay *= 2
