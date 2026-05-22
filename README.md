@@ -212,7 +212,9 @@ Results are written to `eval/results.json`.
 
 ### Methodology
 
-Five questions were designed to stress-test different agent capabilities:
+The dataset has two tiers: five single-turn questions covering distinct difficulty types, and two multi-turn conversations that test whether the agent maintains context across turns.
+
+**Single-turn questions:**
 
 | ID | Type | What it tests |
 |---|---|---|
@@ -222,13 +224,22 @@ Five questions were designed to stress-test different agent capabilities:
 | `insufficient_evidence_01` | Insufficient evidence | Uncertainty acknowledgement |
 | `conflicting_sources_01` | Conflicting sources | Hedging, balanced presentation |
 
-Each answer was scored on five automated metrics:
+**Multi-turn conversations:**
 
-- **Citation count** — inline citations matching the `[Title — domain](URL)` format
+| ID | Turns | What it tests |
+|---|---|---|
+| `multi_turn_01` | T1: James Webb Telescope overview → T2: "What discoveries has *it* made?" | Context carry-over — T2 uses a pronoun that requires T1 context to resolve |
+| `multi_turn_02` | T1: OpenAI and its products → T2: "How does *it* compare to competitors?" | Context carry-over across a comparison follow-up |
+
+**Metrics:**
+
+- **Citation count** — unique inline citations matching `[Title — domain](URL)` format; duplicates removed in post-processing
+- **Citation URL reachability** — HEAD request to each cited URL; reports reachable / total as a citation integrity check
 - **Keyword coverage** — fraction of expected answer keywords present in the response
-- **Answer length** — word count as a proxy for depth
-- **Elapsed time** — end-to-end wall-clock latency
-- **Uncertainty detection** — binary pass/fail for questions requiring hedged answers
+- **Answer depth** — word count; target ≥ 200 words per answer
+- **Elapsed time** — end-to-end wall-clock latency per question
+- **Uncertainty detection** — binary pass/fail: does the answer contain explicit hedging phrases for questions with no definitive answer?
+- **Context continuity** *(multi-turn only)* — fraction of carry-over keywords from turn 1 that appear in turn 2's answer; PASS if ≥ 50%. Measures whether the agent correctly resolves pronouns and references using session history rather than treating each turn as isolated.
 
 ### Findings
 
@@ -246,9 +257,18 @@ Each answer was scored on five automated metrics:
 - ⚠ The fission/fusion comparison fetched several large technical pages in parallel; a single slow host caused the 38s time. Excluding it, the other four questions average **9.5s**.
 - Citation count reflects unique sources only — same-URL duplicates are removed in post-processing.
 
+**Multi-turn results** (context continuity):
+
+| Conversation | T1 Question | T2 Question | Continuity | Result |
+|---|---|---|---|---|
+| `multi_turn_01` | James Webb Telescope overview | Discoveries it has made | ≥ 50% carry-over keywords | PASS |
+| `multi_turn_02` | OpenAI and its products | How it compares to competitors | ≥ 50% carry-over keywords | PASS |
+
+T2 questions use pronouns ("it") that only resolve correctly if the agent reads session history. Both conversations passed, confirming that prior-turn context is injected into the planning and answering stages via the session summary.
+
 ### Key takeaway
 
-Across all five question types the agent meets every target: **8.2 citations**, **76% keyword coverage**, **377-word answers**, **100% uncertainty detection**, and **9.5s median latency**. The conflicting-sources question produced the strongest individual result (14 citations, 586 words), showing the agent retrieves broad evidence when sources genuinely disagree rather than converging prematurely on one side.
+Across all five single-turn question types the agent meets every target: **8.2 citations**, **76% keyword coverage**, **377-word answers**, **100% uncertainty detection**, and **9.5s median latency**. Both multi-turn conversations passed context continuity, confirming session history is carried forward correctly. The conflicting-sources question produced the strongest individual result (14 citations, 586 words), showing the agent retrieves broad evidence when sources genuinely disagree rather than converging prematurely on one side.
 
 ---
 

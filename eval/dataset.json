@@ -28,5 +28,35 @@
     "type": "conflicting_sources",
     "question": "Is coffee consumption beneficial or harmful to human health?",
     "expected_keywords": ["conflict", "studies", "beneficial", "harmful", "risk", "benefit", "cardiovascular", "antioxidants", "depends"]
+  },
+  {
+    "id": "multi_turn_01",
+    "type": "multi_turn",
+    "turns": [
+      {
+        "question": "What is the James Webb Space Telescope and what are its main scientific objectives?",
+        "expected_keywords": ["webb", "infrared", "nasa", "galaxy", "universe", "telescope"]
+      },
+      {
+        "question": "What major discoveries has it made so far?",
+        "expected_keywords": ["galaxy", "exoplanet", "atmosphere", "star", "observation"],
+        "context_keywords": ["webb", "james webb", "telescope", "infrared"]
+      }
+    ]
+  },
+  {
+    "id": "multi_turn_02",
+    "type": "multi_turn",
+    "turns": [
+      {
+        "question": "What is OpenAI and what are its main products?",
+        "expected_keywords": ["openai", "gpt", "chatgpt", "artificial intelligence", "sam altman"]
+      },
+      {
+        "question": "How does it compare to its main competitors in the AI industry?",
+        "expected_keywords": ["google", "anthropic", "meta", "comparison", "model"],
+        "context_keywords": ["openai", "gpt", "chatgpt"]
+      }
+    ]
   }
 ]
