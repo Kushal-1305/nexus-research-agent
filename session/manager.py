@@ -1,7 +1,3 @@
-
-
-
-
 # session/manager.py
 
 import json
